@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D539B6BD-67A1-4101-A4DC-878819185083}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xtensible.TusDotNet.Azure", "src\Xtensible.TusDotNet.Azure\Xtensible.TusDotNet.Azure.csproj", "{16B56706-C923-4D63-A24B-DFD4C8FB498F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2A61F572-6BBE-4C30-B95F-5337E1ED2B07}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xtensible.TusDotNet.Azure.Tests", "test\Xtensible.TusDotNet.Azure.Tests\Xtensible.TusDotNet.Azure.Tests.csproj", "{670948D1-246C-455F-86FD-F2C7D52FF324}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{16B56706-C923-4D63-A24B-DFD4C8FB498F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16B56706-C923-4D63-A24B-DFD4C8FB498F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16B56706-C923-4D63-A24B-DFD4C8FB498F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16B56706-C923-4D63-A24B-DFD4C8FB498F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{670948D1-246C-455F-86FD-F2C7D52FF324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{670948D1-246C-455F-86FD-F2C7D52FF324}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{670948D1-246C-455F-86FD-F2C7D52FF324}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{670948D1-246C-455F-86FD-F2C7D52FF324}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{16B56706-C923-4D63-A24B-DFD4C8FB498F} = {D539B6BD-67A1-4101-A4DC-878819185083}
+		{670948D1-246C-455F-86FD-F2C7D52FF324} = {2A61F572-6BBE-4C30-B95F-5337E1ED2B07}
+	EndGlobalSection
+EndGlobal
