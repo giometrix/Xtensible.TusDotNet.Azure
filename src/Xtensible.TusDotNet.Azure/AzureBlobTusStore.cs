@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -26,7 +27,7 @@ namespace Xtensible.TusDotNet.Azure
         , ITusChecksumStore // we can only efficiently verify the checksum if we cap chunk sizes to <AppendBlobBlockSize> (4MB) or less
 #endif
 #if pipelines
- //       , ITusPipelineStore
+ //       , ITusPipelineStore //todo
 #endif
 
     {
@@ -47,7 +48,7 @@ namespace Xtensible.TusDotNet.Azure
         private readonly MetadataParsingStrategy _metadataParsingStrategy;
         private readonly ArrayPool<byte> _writeBuffer = ArrayPool<byte>.Create();
 
-        public AzureBlobTusStore(string connectionString, string containerName, MetadataParsingStrategy metadataParsingStrategy,
+        public AzureBlobTusStore(string connectionString, string containerName, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original,
             int maxDegreeOfDeleteParallelism = 4, bool isContainerPublic = false)
         {
             _connectionString = connectionString;
@@ -93,7 +94,7 @@ namespace Xtensible.TusDotNet.Azure
             var tags = await blobClient.GetTagsAsync(cancellationToken: cancellationToken);
             if (tags.Value.Tags.TryGetValue(ExpirationKey, out var expiration))
             {
-                return DateTimeOffset.Parse(expiration);
+                return DateTimeOffset.ParseExact(expiration, "s", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
             }
             return null;
         }
@@ -227,9 +228,9 @@ namespace Xtensible.TusDotNet.Azure
         }
 
 #if pipelines
-        public async Task<long> AppendDataAsync(string fileId, PipeReader pipeReader, CancellationToken cancellationToken)
+        public Task<long> AppendDataAsync(string fileId, PipeReader pipeReader, CancellationToken cancellationToken)
         {
-            throw new NotFiniteNumberException();
+            throw new NotImplementedException();
         }
 #endif
         public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
