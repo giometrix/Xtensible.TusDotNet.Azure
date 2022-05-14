@@ -5,6 +5,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\xtensible-x.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.12.0" />
     <PackageReference Include="tusdotnet" Version="2.6.0" />
     <PackageReference Include="Xtensible.Time.Clock" Version="1.1.0" />
@@ -27,6 +38,18 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <LangVersion>latest</LangVersion>
+    <Authors>Giovanni Galbo</Authors>
+    <Company>Giovanni Galbo</Company>
+    <Description>An Azure Blob Storage extension for tusdotnet; .NET's most popular implementation of the tus protocol.</Description>
+    <PackageProjectUrl>https://github.com/giometrix/Xtensible.TusDotNet.Azure</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/giometrix/Xtensible.TusDotNet.Azure</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>tus;tusdotnet;azure;blob;azure-blob-storage;upload</PackageTags>
+    <PackageReleaseNotes>Initial release</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageIcon>xtensible-x.png</PackageIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
