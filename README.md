@@ -1,4 +1,6 @@
 # Xtensible.TusDotNet.Azure
+[![Nuget](https://img.shields.io/nuget/v/Xtensible.TusDotNet.Azure)](https://www.nuget.org/packages/Xtensible.TusDotNet.Azure)
+
 An Azure Blob Storage extension for [tusdotnet](https://github.com/tusdotnet/tusdotnet); .NET's most popular implementation of the [tus](https://tus.io/) protocol.
 
 ### What is tus?
