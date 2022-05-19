@@ -23,3 +23,11 @@ used to send data to Azure.  Anything beyond 4MB would be inefficient, because w
 so this extension was disabled.  If you care about this feature and are ok with limiting chunk size to 4MB you can compile with it turned on.
 
 * Pipelines - tusdotnet supports pipelines for .net core 3.1+, which is more efficient than the streams implementation.  I haven't gotten to this yet, but will happily accept pull requests. 
+
+
+### Azurite
+[Azurite](https://github.com/Azure/Azurite) is the latest, and recommended Azure Storage emulator to use for testing and local development.
+Unfortunately, it does not yet support tags (see [issue](https://github.com/Azure/Azurite/issues/647)).  This is problematic because tags is how this library queries for expired files.
+To work around this, I have split out the expiration stuff into a separate interface `ITusExpirationDetailsStore` and implemented `NullExpirationDetailsStore`.
+
+This allows you to use an external database (for just dev, or both prod and dev), or you can use `NullExpirationDetailsStore` in dev to forego using the expiration feature when using Azurite.

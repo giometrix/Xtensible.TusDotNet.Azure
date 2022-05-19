@@ -35,7 +35,6 @@ namespace Xtensible.TusDotNet.Azure
         private const string UploadLengthKey = "UploadLength";
         private const string RawMetadataKey = "RawMetadata";
         private const string UploadOffsetKey = "UploadOffset";
-        private const string ExpirationKey = "ExpiresAt";
         private const string MD5ChecksumKey = "MD5Checksum";
 
         private static bool _containerExists;
@@ -47,10 +46,12 @@ namespace Xtensible.TusDotNet.Azure
         private readonly int _maxDegreeOfDeleteParallelism;
         private readonly MetadataParsingStrategy _metadataParsingStrategy;
         private readonly ArrayPool<byte> _writeBuffer = ArrayPool<byte>.Create();
+        private readonly ITusExpirationDetailsStore _expirationDetailsStore;
 
-        public AzureBlobTusStore(string connectionString, string containerName, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original,
+        public AzureBlobTusStore(string connectionString, string containerName, ITusExpirationDetailsStore expirationDetailsStore = default, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original,
             int maxDegreeOfDeleteParallelism = 4, bool isContainerPublic = false)
         {
+            _expirationDetailsStore = expirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName);
             _connectionString = connectionString;
             _containerName = containerName;
             _metadataParsingStrategy = metadataParsingStrategy;
@@ -80,36 +81,19 @@ namespace Xtensible.TusDotNet.Azure
             return await GetBlobMetadataAsync(fileId, RawMetadataKey, cancellationToken);
         }
 
-        public async Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
+        public Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
         {
-            var blobClient = GetAppendBlobClient(fileId);
-            await blobClient.SetTagsAsync(new Dictionary<string, string> {
-                [ExpirationKey] = expires.UtcDateTime.ToString("s")
-            }, cancellationToken: cancellationToken);
+            return _expirationDetailsStore.SetExpirationAsync(fileId, expires, cancellationToken);
         }
 
-        public async Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken cancellationToken)
+        public Task<DateTimeOffset?> GetExpirationAsync(string fileId, CancellationToken cancellationToken)
         {
-            var blobClient = GetAppendBlobClient(fileId);
-            var tags = await blobClient.GetTagsAsync(cancellationToken: cancellationToken);
-            if (tags.Value.Tags.TryGetValue(ExpirationKey, out var expiration))
-            {
-                return DateTimeOffset.ParseExact(expiration, "s", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
-            }
-            return null;
+            return _expirationDetailsStore.GetExpirationAsync(fileId, cancellationToken);
         }
 
-        public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
+        public Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
         {
-            var blobServiceClient = new BlobServiceClient(_connectionString);
-            var blobItems = blobServiceClient.FindBlobsByTagsAsync($"{ExpirationKey} < '{Clock.Default.UtcNow:s}'", cancellationToken);
-            var toDelete = new List<string>();
-            var enumerator = blobItems.GetAsyncEnumerator(cancellationToken);
-            while (await enumerator.MoveNextAsync())
-            {
-                toDelete.Add(enumerator.Current.BlobName);
-            }
-            return toDelete;
+            return _expirationDetailsStore.GetExpiredFilesAsync(cancellationToken);
         }
 
         public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
