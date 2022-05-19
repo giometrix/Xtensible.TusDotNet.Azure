@@ -137,10 +137,11 @@ namespace Xtensible.TusDotNet.Azure.Tests
             var expiration = await _azureBlobTusStore.GetExpirationAsync(id, CancellationToken.None);
             Assert.Equal(Clock.Default.UtcNow.Subtract(TimeSpan.FromHours(1)), expiration);
 
-
+            await Task.Delay(2000); // adding delay because blob api seems to be lagging a bit
             var expiringFiles = await _azureBlobTusStore.GetExpiredFilesAsync(CancellationToken.None);
             Assert.NotEmpty(expiringFiles);
             await _azureBlobTusStore.RemoveExpiredFilesAsync(CancellationToken.None);
+            await Task.Delay(2000);
             expiringFiles = await _azureBlobTusStore.GetExpiredFilesAsync(CancellationToken.None);
             Assert.Empty(expiringFiles);
 
