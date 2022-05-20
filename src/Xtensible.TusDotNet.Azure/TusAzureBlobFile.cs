@@ -37,7 +37,7 @@ namespace Xtensible.TusDotNet.Azure
         public async Task<Dictionary<string, Metadata>> GetMetadataAsync(CancellationToken cancellationToken)
         {
             var properties = await _appendBlobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            if (properties.Value.Metadata.TryGetValue("Metadata", out var blobMetadata))
+            if (properties.Value.Metadata.TryGetValue("RawMetadata", out var blobMetadata))
             {
                 var metadataParserResult = MetadataParser.ParseAndValidate(_metadataParsingStrategy, blobMetadata);
                 if (metadataParserResult.Success)

@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Configuration;
+using tusdotnet.Models;
+using tusdotnet.Parsers;
 using Xtensible.Time;
 using Xunit;
 
@@ -144,6 +146,41 @@ namespace Xtensible.TusDotNet.Azure.Tests
             await Task.Delay(2000);
             expiringFiles = await _azureBlobTusStore.GetExpiredFilesAsync(CancellationToken.None);
             Assert.Empty(expiringFiles);
+
+        }
+
+        [Fact]
+        public async Task get_metadata()
+        {
+            var fileInfo = new FileInfo(SmallFileName);
+            var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+
+            var metadata = await _azureBlobTusStore.GetUploadMetadataAsync(id, CancellationToken.None);
+            Assert.NotEmpty(metadata);
+            var parsedMetadata = MetadataParser.ParseAndValidate(MetadataParsingStrategy.Original, metadata);
+            Assert.True(parsedMetadata.Success);
+            Assert.True(parsedMetadata.Metadata.ContainsKey("test"));
+            Assert.Equal("1", parsedMetadata.Metadata["test"].GetString(Encoding.UTF8));
+            Assert.Equal(3, parsedMetadata.Metadata.Count);
+            await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
+
+        }
+
+
+        [Fact]
+        public async Task get_metadata_from_tus_blob_file()
+        {
+            var fileInfo = new FileInfo(SmallFileName);
+            var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+
+            var tusBlobFile = new TusAzureBlobFile(id, new AppendBlobClient(_connectionString, ContainerName, id), MetadataParsingStrategy.Original);
+
+            var metadata = await tusBlobFile.GetMetadataAsync(CancellationToken.None);
+            Assert.NotEmpty(metadata);
+            
+            Assert.Equal("1", metadata["test"].GetString(Encoding.UTF8));
+            Assert.Equal(3, metadata.Count);
+            await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
 
         }
     }
