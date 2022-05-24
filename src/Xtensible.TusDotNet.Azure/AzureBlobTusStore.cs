@@ -47,6 +47,7 @@ namespace Xtensible.TusDotNet.Azure
         private readonly MetadataParsingStrategy _metadataParsingStrategy;
         private readonly ArrayPool<byte> _writeBuffer = ArrayPool<byte>.Create();
         private readonly ITusExpirationDetailsStore _expirationDetailsStore;
+        private readonly Func<string, Task<string>> _fileIdGeneratorAsync;
 
         public AzureBlobTusStore(string connectionString, string containerName, AzureBlobTusStoreOptions options = default)
         {
@@ -57,13 +58,14 @@ namespace Xtensible.TusDotNet.Azure
             _metadataParsingStrategy = options.MetadataParsingStrategy;
             _maxDegreeOfDeleteParallelism = options.MaxDegreeOfDeleteParallelism;
             _isContainerPublic = options.IsContainerPublic;
+            _fileIdGeneratorAsync = options.FileIdGeneratorAsync ?? (metadata => Task.FromResult(Guid.NewGuid().ToString("N")));
         }
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
         {
             await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
 
-            var id = Guid.NewGuid().ToString("N");
+            var id = await _fileIdGeneratorAsync(metadata);
             var appendBlobClient = GetAppendBlobClient(id);
             var metadataDictionary = new Dictionary<string, string> {
                 [UploadLengthKey] = uploadLength.ToString(),
