@@ -48,15 +48,15 @@ namespace Xtensible.TusDotNet.Azure
         private readonly ArrayPool<byte> _writeBuffer = ArrayPool<byte>.Create();
         private readonly ITusExpirationDetailsStore _expirationDetailsStore;
 
-        public AzureBlobTusStore(string connectionString, string containerName, ITusExpirationDetailsStore expirationDetailsStore = default, MetadataParsingStrategy metadataParsingStrategy = MetadataParsingStrategy.Original,
-            int maxDegreeOfDeleteParallelism = 4, bool isContainerPublic = false)
+        public AzureBlobTusStore(string connectionString, string containerName, AzureBlobTusStoreOptions options = default)
         {
-            _expirationDetailsStore = expirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName);
+            options ??= new AzureBlobTusStoreOptions();
+            _expirationDetailsStore = options.ExpirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName);
             _connectionString = connectionString;
             _containerName = containerName;
-            _metadataParsingStrategy = metadataParsingStrategy;
-            _maxDegreeOfDeleteParallelism = maxDegreeOfDeleteParallelism;
-            _isContainerPublic = isContainerPublic;
+            _metadataParsingStrategy = options.MetadataParsingStrategy;
+            _maxDegreeOfDeleteParallelism = options.MaxDegreeOfDeleteParallelism;
+            _isContainerPublic = options.IsContainerPublic;
         }
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
