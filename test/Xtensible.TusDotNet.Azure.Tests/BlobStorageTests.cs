@@ -183,5 +183,16 @@ namespace Xtensible.TusDotNet.Azure.Tests
             await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
 
         }
+
+        [Fact]
+        public async Task create_file_custom_id()
+        {
+            var azureBlobTusStore = new AzureBlobTusStore(_connectionString, ContainerName, new AzureBlobTusStoreOptions{FileIdGeneratorAsync = async id => nameof(create_file_custom_id)});
+            var fileInfo = new FileInfo(SmallFileName);
+            var id = await azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+            Assert.Equal(nameof(create_file_custom_id), id);
+            await azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
+
+        }
     }
 }
