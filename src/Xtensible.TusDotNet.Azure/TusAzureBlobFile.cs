@@ -18,16 +18,16 @@ namespace Xtensible.TusDotNet.Azure
         private readonly AppendBlobClient _appendBlobClient;
         private readonly MetadataParsingStrategy _metadataParsingStrategy;
         
-
         public TusAzureBlobFile(string fileId, AppendBlobClient appendBlobClient, MetadataParsingStrategy metadataParsingStrategy)
         {
             Id = fileId;
             _appendBlobClient = appendBlobClient;
+            Uri = _appendBlobClient.Uri;
             _metadataParsingStrategy = metadataParsingStrategy;
         }
 
         public string Id { get; }
-
+        public Uri Uri { get; }
 
         public Task<Stream> GetContentAsync(CancellationToken cancellationToken)
         {
@@ -46,8 +46,8 @@ namespace Xtensible.TusDotNet.Azure
                 }
                 throw new InvalidOperationException(metadataParserResult.ErrorMessage);
             }
+
             return EmptyDictionary;
-          
         }
     }
 }
