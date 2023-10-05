@@ -46,7 +46,7 @@
     <RepositoryUrl>https://github.com/giometrix/Xtensible.TusDotNet.Azure</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>tus;tusdotnet;azure;blob;azure-blob-storage;upload</PackageTags>
-    <PackageReleaseNotes>Allow for custom file id generation</PackageReleaseNotes>
+    <PackageReleaseNotes>Expose file Uri</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageIcon>xtensible-x.png</PackageIcon>
