@@ -67,7 +67,8 @@ namespace Xtensible.TusDotNet.Azure
 
             var id = await _fileIdGeneratorAsync(metadata);
             var appendBlobClient = GetAppendBlobClient(id);
-            var metadataDictionary = new Dictionary<string, string> {
+            var metadataDictionary = new Dictionary<string, string>
+            {
                 [UploadLengthKey] = uploadLength.ToString(),
                 [RawMetadataKey] = metadata ?? string.Empty,
                 [UploadOffsetKey] = "0"
@@ -265,12 +266,10 @@ namespace Xtensible.TusDotNet.Azure
             return false;
         }
 
-
         private AppendBlobClient GetAppendBlobClient(string fileId)
         {
             return new AppendBlobClient(_connectionString, _containerName, fileId);
         }
-
 
         private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)
         {
