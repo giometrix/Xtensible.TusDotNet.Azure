@@ -18,7 +18,6 @@
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
     <PackageReference Include="tusdotnet" Version="2.7.2" />
-    <PackageReference Include="Xtensible.Time.Clock" Version="1.1.0" />
   </ItemGroup>
 	
   <!-- SourceLink -->
