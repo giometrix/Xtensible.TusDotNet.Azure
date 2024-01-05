@@ -160,7 +160,7 @@ namespace Xtensible.TusDotNet.Azure.Tests
         [Fact]
         public async Task expire_file()
         {
-            if (_connectionString.Contains("UseDev"))
+            if (_connectionString.Contains("UseDev") || _connectionString.Contains("devstoreaccount"))
             {
                 return;
             }
