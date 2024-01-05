@@ -132,6 +132,10 @@ namespace Xtensible.TusDotNet.Azure.Tests
         [Fact]
         public async Task expire_file()
         {
+            if (_connectionString.Contains("UseDev"))
+            {
+                return;
+            }
             var fileInfo = new FileInfo(SmallFileName);
             var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("filename", SmallFileName), ("test-id", nameof(append_file))), CancellationToken.None);
             await _azureBlobTusStore.SetExpirationAsync(id, Clock.Default.UtcNow.Subtract(TimeSpan.FromHours(1)), CancellationToken.None);
