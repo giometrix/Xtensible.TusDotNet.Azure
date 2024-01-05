@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -161,8 +162,15 @@ namespace Xtensible.TusDotNet.Azure
                     {
                         using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                         {
-                            md5Hash = ChecksumProvider.GetChecksum("md5", ms);
-                            await appendBlobClient.AppendBlockAsync(ms, md5Hash, cancellationToken: cancellationToken);
+                            var options = new AppendBlobAppendBlockOptions
+                            {
+                                TransferValidation = new UploadTransferValidationOptions
+                                {
+                                    ChecksumAlgorithm = StorageChecksumAlgorithm.MD5,
+                                    PrecalculatedChecksum = ChecksumProvider.GetChecksum("md5", ms)
+                                }
+                            };
+                            await appendBlobClient.AppendBlockAsync(ms, options, cancellationToken: cancellationToken);
                         }
                         bytesWritten = 0;
                     }
@@ -172,8 +180,15 @@ namespace Xtensible.TusDotNet.Azure
                 {
                     using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                     {
-                        md5Hash = ChecksumProvider.GetChecksum("md5", ms);
-                        await appendBlobClient.AppendBlockAsync(ms, md5Hash, cancellationToken: cancellationToken);
+                        var options = new AppendBlobAppendBlockOptions
+                        {
+                            TransferValidation = new UploadTransferValidationOptions
+                            {
+                                ChecksumAlgorithm = StorageChecksumAlgorithm.MD5,
+                                PrecalculatedChecksum = ChecksumProvider.GetChecksum("md5", ms)
+                            }
+                        };
+                        await appendBlobClient.AppendBlockAsync(ms, options, cancellationToken: cancellationToken);
                     }
                 }
 
