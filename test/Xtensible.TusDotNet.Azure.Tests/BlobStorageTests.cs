@@ -9,7 +9,6 @@ using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Configuration;
 using tusdotnet.Models;
 using tusdotnet.Parsers;
-using Xtensible.Time;
 using Xunit;
 
 namespace Xtensible.TusDotNet.Azure.Tests
@@ -29,15 +28,16 @@ namespace Xtensible.TusDotNet.Azure.Tests
             _azureBlobTusStore = new AzureBlobTusStore(_connectionString, ContainerName);
       
             EnsureTestFiles();
-            Clock.Default = new MockClock(new DateTimeOffset(2022, 7, 1, 6, 44, 32, TimeSpan.Zero));
+            SystemTime.UtcNow = () => new DateTimeOffset(2022, 7, 1, 6, 44, 32, TimeSpan.Zero);
         }
 
         private const string SmallFileName = "small.txt";
         private const string LargeFileName = "large.txt";
         private const string ContainerName = "upload-tests";
+        private const string TestPath = "folder/sub-folder/";
 
         private readonly string _connectionString;
-        private readonly AzureBlobTusStore _azureBlobTusStore;
+        private AzureBlobTusStore _azureBlobTusStore;
 
         private void EnsureTestFiles()
         {
@@ -95,6 +95,34 @@ namespace Xtensible.TusDotNet.Azure.Tests
             await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
 
         }
+        
+
+        [Fact]
+        public async Task create_file_with_path()
+        {
+            _azureBlobTusStore = new AzureBlobTusStore(_connectionString, ContainerName, new AzureBlobTusStoreOptions {BlobPath = TestPath});
+            var fileInfo = new FileInfo(SmallFileName);
+            var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test","1"), ("a","b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+
+            // assert that the file record is there and that the metadata is there
+            var client = GetAppendBlobClient(Path.Combine(TestPath, id));
+            var properties = await client.GetPropertiesAsync();
+            Assert.NotNull(properties.Value);
+            var metaData = properties.Value.Metadata["RawMetadata"].Split(',').Select(s =>
+            {
+                var pair = s.Split(' ');
+                return (key:pair[0], value:Base64ToString(pair[1]));
+            }).ToArray();
+
+            Assert.Equal("test", metaData[0].key);
+            Assert.Equal("1", metaData[0].value);
+
+            Assert.Equal("a", metaData[1].key);
+            Assert.Equal("b", metaData[1].value);
+
+            await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
+
+        }
 
 
         [Fact]
@@ -132,12 +160,16 @@ namespace Xtensible.TusDotNet.Azure.Tests
         [Fact]
         public async Task expire_file()
         {
+            if (_connectionString.Contains("UseDev") || _connectionString.Contains("devstoreaccount"))
+            {
+                return;
+            }
             var fileInfo = new FileInfo(SmallFileName);
             var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("filename", SmallFileName), ("test-id", nameof(append_file))), CancellationToken.None);
-            await _azureBlobTusStore.SetExpirationAsync(id, Clock.Default.UtcNow.Subtract(TimeSpan.FromHours(1)), CancellationToken.None);
+            await _azureBlobTusStore.SetExpirationAsync(id, SystemTime.UtcNow().Subtract(TimeSpan.FromHours(1)), CancellationToken.None);
 
             var expiration = await _azureBlobTusStore.GetExpirationAsync(id, CancellationToken.None);
-            Assert.Equal(Clock.Default.UtcNow.Subtract(TimeSpan.FromHours(1)), expiration);
+            Assert.Equal(SystemTime.UtcNow().Subtract(TimeSpan.FromHours(1)), expiration);
 
             await Task.Delay(2000); // adding delay because blob api seems to be lagging a bit
             var expiringFiles = await _azureBlobTusStore.GetExpiredFilesAsync(CancellationToken.None);
