@@ -13,9 +13,6 @@ using Azure.Storage.Blobs.Specialized;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using Xtensible.Time;
-#if pipelines
-using System.IO.Pipelines;
-#endif
 namespace Xtensible.TusDotNet.Azure
 {
     public class AzureBlobTusStore : ITusStore,
@@ -25,9 +22,6 @@ namespace Xtensible.TusDotNet.Azure
         , ITusExpirationStore
 #if ENABLE_CHECKSUM
         , ITusChecksumStore // we can only efficiently verify the checksum if we cap chunk sizes to <AppendBlobBlockSize> (4MB) or less
-#endif
-#if pipelines
- //       , ITusPipelineStore //todo
 #endif
 
     {
@@ -214,12 +208,6 @@ namespace Xtensible.TusDotNet.Azure
             return long.Parse(await GetBlobMetadataAsync(fileId, UploadOffsetKey, cancellationToken));
         }
 
-#if pipelines
-        public Task<long> AppendDataAsync(string fileId, PipeReader pipeReader, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-#endif
         public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
         {
             await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
