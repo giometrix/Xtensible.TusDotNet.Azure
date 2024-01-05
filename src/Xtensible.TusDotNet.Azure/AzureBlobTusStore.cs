@@ -37,6 +37,7 @@ namespace Xtensible.TusDotNet.Azure
         private static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
         private readonly string _connectionString;
         private readonly string _containerName;
+        private readonly string _blobPath;
         private readonly bool _isContainerPublic;
         private readonly int _maxDegreeOfDeleteParallelism;
         private readonly MetadataParsingStrategy _metadataParsingStrategy;
@@ -54,6 +55,7 @@ namespace Xtensible.TusDotNet.Azure
             _maxDegreeOfDeleteParallelism = options.MaxDegreeOfDeleteParallelism;
             _isContainerPublic = options.IsContainerPublic;
             _fileIdGeneratorAsync = options.FileIdGeneratorAsync ?? (metadata => Task.FromResult(Guid.NewGuid().ToString("N")));
+            _blobPath = options.BlobPath;
         }
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
@@ -271,7 +273,7 @@ namespace Xtensible.TusDotNet.Azure
 
         private AppendBlobClient GetAppendBlobClient(string fileId)
         {
-            return new AppendBlobClient(_connectionString, _containerName, fileId);
+            return new AppendBlobClient(_connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
 
         private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)

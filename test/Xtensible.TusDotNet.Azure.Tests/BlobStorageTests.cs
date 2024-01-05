@@ -35,9 +35,10 @@ namespace Xtensible.TusDotNet.Azure.Tests
         private const string SmallFileName = "small.txt";
         private const string LargeFileName = "large.txt";
         private const string ContainerName = "upload-tests";
+        private const string TestPath = "folder/sub-folder/";
 
         private readonly string _connectionString;
-        private readonly AzureBlobTusStore _azureBlobTusStore;
+        private AzureBlobTusStore _azureBlobTusStore;
 
         private void EnsureTestFiles()
         {
@@ -78,6 +79,34 @@ namespace Xtensible.TusDotNet.Azure.Tests
 
             // assert that the file record is there and that the metadata is there
             var client = GetAppendBlobClient(id);
+            var properties = await client.GetPropertiesAsync();
+            Assert.NotNull(properties.Value);
+            var metaData = properties.Value.Metadata["RawMetadata"].Split(',').Select(s =>
+            {
+                var pair = s.Split(' ');
+                return (key:pair[0], value:Base64ToString(pair[1]));
+            }).ToArray();
+
+            Assert.Equal("test", metaData[0].key);
+            Assert.Equal("1", metaData[0].value);
+
+            Assert.Equal("a", metaData[1].key);
+            Assert.Equal("b", metaData[1].value);
+
+            await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
+
+        }
+        
+
+        [Fact]
+        public async Task create_file_with_path()
+        {
+            _azureBlobTusStore = new AzureBlobTusStore(_connectionString, ContainerName, new AzureBlobTusStoreOptions {BlobPath = TestPath});
+            var fileInfo = new FileInfo(SmallFileName);
+            var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test","1"), ("a","b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+
+            // assert that the file record is there and that the metadata is there
+            var client = GetAppendBlobClient(Path.Combine(TestPath, id));
             var properties = await client.GetPropertiesAsync();
             Assert.NotNull(properties.Value);
             var metaData = properties.Value.Metadata["RawMetadata"].Split(',').Select(s =>
