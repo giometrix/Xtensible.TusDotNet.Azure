@@ -6,10 +6,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
-using Xtensible.Time;
 
 namespace Xtensible.TusDotNet.Azure
 {
+    
+    // https://ayende.com/blog/3408/dealing-with-time-in-tests
+    public static class SystemTime
+    {
+        public static Func<DateTimeOffset> UtcNow = () => DateTimeOffset.UtcNow;
+    }
+    
     public class AzureBlobExpirationDetailsStore : ITusExpirationDetailsStore
     {
         private const string ExpirationKey = "ExpiresAt";
@@ -47,7 +53,7 @@ namespace Xtensible.TusDotNet.Azure
         public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
         {
             var blobServiceClient = new BlobServiceClient(_connectionString);
-            var blobItems = blobServiceClient.FindBlobsByTagsAsync($"@container='{_containerName}' AND {ExpirationKey} < '{Clock.Default.UtcNow:s}'", cancellationToken);
+            var blobItems = blobServiceClient.FindBlobsByTagsAsync($"@container='{_containerName}' AND {ExpirationKey} < '{SystemTime.UtcNow():s}'", cancellationToken);
             var toDelete = new List<string>();
             var enumerator = blobItems.GetAsyncEnumerator(cancellationToken);
             while (await enumerator.MoveNextAsync())

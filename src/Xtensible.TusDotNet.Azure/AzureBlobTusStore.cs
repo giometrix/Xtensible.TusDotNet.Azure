@@ -13,7 +13,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
-using Xtensible.Time;
+
 namespace Xtensible.TusDotNet.Azure
 {
     public class AzureBlobTusStore : ITusStore,

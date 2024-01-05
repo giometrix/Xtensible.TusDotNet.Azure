@@ -9,7 +9,6 @@ using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Configuration;
 using tusdotnet.Models;
 using tusdotnet.Parsers;
-using Xtensible.Time;
 using Xunit;
 
 namespace Xtensible.TusDotNet.Azure.Tests
@@ -29,7 +28,7 @@ namespace Xtensible.TusDotNet.Azure.Tests
             _azureBlobTusStore = new AzureBlobTusStore(_connectionString, ContainerName);
       
             EnsureTestFiles();
-            Clock.Default = new MockClock(new DateTimeOffset(2022, 7, 1, 6, 44, 32, TimeSpan.Zero));
+            SystemTime.UtcNow = () => new DateTimeOffset(2022, 7, 1, 6, 44, 32, TimeSpan.Zero);
         }
 
         private const string SmallFileName = "small.txt";
@@ -167,10 +166,10 @@ namespace Xtensible.TusDotNet.Azure.Tests
             }
             var fileInfo = new FileInfo(SmallFileName);
             var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("filename", SmallFileName), ("test-id", nameof(append_file))), CancellationToken.None);
-            await _azureBlobTusStore.SetExpirationAsync(id, Clock.Default.UtcNow.Subtract(TimeSpan.FromHours(1)), CancellationToken.None);
+            await _azureBlobTusStore.SetExpirationAsync(id, SystemTime.UtcNow().Subtract(TimeSpan.FromHours(1)), CancellationToken.None);
 
             var expiration = await _azureBlobTusStore.GetExpirationAsync(id, CancellationToken.None);
-            Assert.Equal(Clock.Default.UtcNow.Subtract(TimeSpan.FromHours(1)), expiration);
+            Assert.Equal(SystemTime.UtcNow().Subtract(TimeSpan.FromHours(1)), expiration);
 
             await Task.Delay(2000); // adding delay because blob api seems to be lagging a bit
             var expiringFiles = await _azureBlobTusStore.GetExpiredFilesAsync(CancellationToken.None);
