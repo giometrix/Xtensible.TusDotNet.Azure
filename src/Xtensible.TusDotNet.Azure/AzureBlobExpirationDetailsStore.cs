@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
@@ -14,11 +15,13 @@ namespace Xtensible.TusDotNet.Azure
         private const string ExpirationKey = "ExpiresAt";
         private readonly string _connectionString;
         private readonly string _containerName;
+        private readonly string _blobPath;
 
-        public AzureBlobExpirationDetailsStore(string connectionString, string containerName)
+        public AzureBlobExpirationDetailsStore(string connectionString, string containerName, string blobPath = "")
         {
             _connectionString = connectionString;
             _containerName = containerName;
+            _blobPath = blobPath;
         }
 
         public async Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
@@ -44,7 +47,7 @@ namespace Xtensible.TusDotNet.Azure
         public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
         {
             var blobServiceClient = new BlobServiceClient(_connectionString);
-            var blobItems = blobServiceClient.FindBlobsByTagsAsync($"{ExpirationKey} < '{Clock.Default.UtcNow:s}'", cancellationToken);
+            var blobItems = blobServiceClient.FindBlobsByTagsAsync($"@container='{_containerName}' AND {ExpirationKey} < '{Clock.Default.UtcNow:s}'", cancellationToken);
             var toDelete = new List<string>();
             var enumerator = blobItems.GetAsyncEnumerator(cancellationToken);
             while (await enumerator.MoveNextAsync())
@@ -56,7 +59,7 @@ namespace Xtensible.TusDotNet.Azure
 
         private AppendBlobClient GetAppendBlobClient(string fileId)
         {
-            return new AppendBlobClient(_connectionString, _containerName, fileId);
+            return new AppendBlobClient(_connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
     }
 }

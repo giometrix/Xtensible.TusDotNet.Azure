@@ -48,14 +48,14 @@ namespace Xtensible.TusDotNet.Azure
         public AzureBlobTusStore(string connectionString, string containerName, AzureBlobTusStoreOptions options = default)
         {
             options ??= new AzureBlobTusStoreOptions();
-            _expirationDetailsStore = options.ExpirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName);
+            _blobPath = options.BlobPath;
+            _expirationDetailsStore = options.ExpirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName, _blobPath);
             _connectionString = connectionString;
             _containerName = containerName;
             _metadataParsingStrategy = options.MetadataParsingStrategy;
             _maxDegreeOfDeleteParallelism = options.MaxDegreeOfDeleteParallelism;
             _isContainerPublic = options.IsContainerPublic;
             _fileIdGeneratorAsync = options.FileIdGeneratorAsync ?? (metadata => Task.FromResult(Guid.NewGuid().ToString("N")));
-            _blobPath = options.BlobPath;
         }
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
