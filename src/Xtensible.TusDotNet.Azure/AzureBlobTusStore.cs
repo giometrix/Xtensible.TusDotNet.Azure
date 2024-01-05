@@ -7,15 +7,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using tusdotnet.Interfaces;
 using tusdotnet.Models;
 using Xtensible.Time;
-#if pipelines
-using System.IO.Pipelines;
-#endif
 namespace Xtensible.TusDotNet.Azure
 {
     public class AzureBlobTusStore : ITusStore,
@@ -25,9 +23,6 @@ namespace Xtensible.TusDotNet.Azure
         , ITusExpirationStore
 #if ENABLE_CHECKSUM
         , ITusChecksumStore // we can only efficiently verify the checksum if we cap chunk sizes to <AppendBlobBlockSize> (4MB) or less
-#endif
-#if pipelines
- //       , ITusPipelineStore //todo
 #endif
 
     {
@@ -42,6 +37,7 @@ namespace Xtensible.TusDotNet.Azure
         private static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
         private readonly string _connectionString;
         private readonly string _containerName;
+        private readonly string _blobPath;
         private readonly bool _isContainerPublic;
         private readonly int _maxDegreeOfDeleteParallelism;
         private readonly MetadataParsingStrategy _metadataParsingStrategy;
@@ -59,6 +55,7 @@ namespace Xtensible.TusDotNet.Azure
             _maxDegreeOfDeleteParallelism = options.MaxDegreeOfDeleteParallelism;
             _isContainerPublic = options.IsContainerPublic;
             _fileIdGeneratorAsync = options.FileIdGeneratorAsync ?? (metadata => Task.FromResult(Guid.NewGuid().ToString("N")));
+            _blobPath = options.BlobPath;
         }
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
@@ -167,8 +164,15 @@ namespace Xtensible.TusDotNet.Azure
                     {
                         using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                         {
-                            md5Hash = ChecksumProvider.GetChecksum("md5", ms);
-                            await appendBlobClient.AppendBlockAsync(ms, md5Hash, cancellationToken: cancellationToken);
+                            var options = new AppendBlobAppendBlockOptions
+                            {
+                                TransferValidation = new UploadTransferValidationOptions
+                                {
+                                    ChecksumAlgorithm = StorageChecksumAlgorithm.MD5,
+                                    PrecalculatedChecksum = ChecksumProvider.GetChecksum("md5", ms)
+                                }
+                            };
+                            await appendBlobClient.AppendBlockAsync(ms, options, cancellationToken: cancellationToken);
                         }
                         bytesWritten = 0;
                     }
@@ -178,8 +182,15 @@ namespace Xtensible.TusDotNet.Azure
                 {
                     using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                     {
-                        md5Hash = ChecksumProvider.GetChecksum("md5", ms);
-                        await appendBlobClient.AppendBlockAsync(ms, md5Hash, cancellationToken: cancellationToken);
+                        var options = new AppendBlobAppendBlockOptions
+                        {
+                            TransferValidation = new UploadTransferValidationOptions
+                            {
+                                ChecksumAlgorithm = StorageChecksumAlgorithm.MD5,
+                                PrecalculatedChecksum = ChecksumProvider.GetChecksum("md5", ms)
+                            }
+                        };
+                        await appendBlobClient.AppendBlockAsync(ms, options, cancellationToken: cancellationToken);
                     }
                 }
 
@@ -214,12 +225,6 @@ namespace Xtensible.TusDotNet.Azure
             return long.Parse(await GetBlobMetadataAsync(fileId, UploadOffsetKey, cancellationToken));
         }
 
-#if pipelines
-        public Task<long> AppendDataAsync(string fileId, PipeReader pipeReader, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-#endif
         public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
         {
             await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
@@ -268,7 +273,7 @@ namespace Xtensible.TusDotNet.Azure
 
         private AppendBlobClient GetAppendBlobClient(string fileId)
         {
-            return new AppendBlobClient(_connectionString, _containerName, fileId);
+            return new AppendBlobClient(_connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
 
         private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)

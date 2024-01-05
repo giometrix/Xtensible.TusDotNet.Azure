@@ -11,5 +11,7 @@ namespace Xtensible.TusDotNet.Azure
         public int MaxDegreeOfDeleteParallelism { get; set; } = 4;
         public bool IsContainerPublic { get; set; } = false;
         public Func<string, Task<string>> FileIdGeneratorAsync { get; set; } = default;
+
+        public string BlobPath { get; set; } = "";
     }
 }
