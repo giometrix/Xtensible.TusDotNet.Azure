@@ -22,12 +22,14 @@ namespace Xtensible.TusDotNet.Azure
         private readonly string _connectionString;
         private readonly string _containerName;
         private readonly string _blobPath;
+        private readonly AzureBlobTusStoreAuthenticationMode _authenticationMode;
 
-        public AzureBlobExpirationDetailsStore(string connectionString, string containerName, string blobPath = "")
+        public AzureBlobExpirationDetailsStore(string connectionString, string containerName, string blobPath = "", AzureBlobTusStoreAuthenticationMode authenticationMode = AzureBlobTusStoreAuthenticationMode.ConnectionString)
         {
             _connectionString = connectionString;
             _containerName = containerName;
             _blobPath = blobPath;
+            _authenticationMode = authenticationMode;
         }
 
         public async Task SetExpirationAsync(string fileId, DateTimeOffset expires, CancellationToken cancellationToken)
@@ -52,7 +54,7 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<IEnumerable<string>> GetExpiredFilesAsync(CancellationToken cancellationToken)
         {
-            var blobServiceClient = new BlobServiceClient(_connectionString);
+            var blobServiceClient = AzureBlobClientFactory.CreateBlobServiceClient(_authenticationMode, _connectionString);
             var blobItems = blobServiceClient.FindBlobsByTagsAsync($"@container='{_containerName}' AND {ExpirationKey} < '{SystemTime.UtcNow():s}'", cancellationToken);
             var toDelete = new List<string>();
             var enumerator = blobItems.GetAsyncEnumerator(cancellationToken);
@@ -65,7 +67,7 @@ namespace Xtensible.TusDotNet.Azure
 
         private AppendBlobClient GetAppendBlobClient(string fileId)
         {
-            return new AppendBlobClient(_connectionString, _containerName, Path.Combine(_blobPath, fileId));
+            return AzureBlobClientFactory.CreateAppendBlobClient(_authenticationMode, _connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
     }
 }
