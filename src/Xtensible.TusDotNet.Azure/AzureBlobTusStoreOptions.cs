@@ -14,5 +14,6 @@ namespace Xtensible.TusDotNet.Azure
         public Func<string, Task<string>> FileIdGeneratorAsync { get; set; } = default;
         public string BlobPath { get; set; } = "";
         public Action<Dictionary<string, string>> UpdateAzureMeta { get; set; } = default;
+        public AzureBlobTusStoreAuthenticationMode AuthenticationMode { get; set; } = AzureBlobTusStoreAuthenticationMode.ConnectionString;
     }
 }
