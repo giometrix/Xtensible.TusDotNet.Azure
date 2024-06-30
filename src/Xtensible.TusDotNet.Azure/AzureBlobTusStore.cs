@@ -45,12 +45,20 @@ namespace Xtensible.TusDotNet.Azure
         private readonly ITusExpirationDetailsStore _expirationDetailsStore;
         private readonly Func<string, Task<string>> _fileIdGeneratorAsync;
         private readonly Action<Dictionary<string, string>> _updateAzureMeta;
+        private readonly AzureBlobTusStoreAuthenticationMode _authenticationMode;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="connectionString">Connection string or URI for the Azure Blob Storage account. If AzureBlobTusStoreOptions.AzureBlobTusStoreAuthenticationMode is set to SystemAssignedManagedIdentity, it must be set to the blob endpoint URI.</param>
+        /// <param name="containerName">Name of the blob container for uploading to.</param>
+        /// <param name="options"></param>
         public AzureBlobTusStore(string connectionString, string containerName, AzureBlobTusStoreOptions options = default)
         {
             options ??= new AzureBlobTusStoreOptions();
             _blobPath = options.BlobPath;
-            _expirationDetailsStore = options.ExpirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName, _blobPath);
+            _authenticationMode = options.AuthenticationMode;
+            _expirationDetailsStore = options.ExpirationDetailsStore ?? new AzureBlobExpirationDetailsStore(connectionString, containerName, _blobPath, _authenticationMode);
             _connectionString = connectionString;
             _containerName = containerName;
             _metadataParsingStrategy = options.MetadataParsingStrategy;
@@ -62,7 +70,7 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
 
             var id = await _fileIdGeneratorAsync(metadata);
             var appendBlobClient = GetAppendBlobClient(id);
@@ -80,7 +88,7 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<string> GetUploadMetadataAsync(string fileId, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             return await GetBlobMetadataAsync(fileId, RawMetadataKey, cancellationToken);
         }
 
@@ -101,7 +109,7 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<int> RemoveExpiredFilesAsync(CancellationToken cancellationToken)
         {
-            var blobContainerClient = new BlobContainerClient(_connectionString, _containerName);
+            var blobContainerClient = AzureBlobClientFactory.CreateBlobContainerClient(_authenticationMode, _connectionString, _containerName);
             var blobs = await GetExpiredFilesAsync(cancellationToken);
 
             var count = 0;
@@ -116,13 +124,13 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<ITusFile> GetFileAsync(string fileId, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             return new TusAzureBlobFile(fileId, GetAppendBlobClient(fileId), _metadataParsingStrategy);
         }
 
         public async Task<long> AppendDataAsync(string fileId, Stream stream, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             var writeBuffer = _writeBuffer.Rent(AppendBlobBlockSize);
             long bytesWrittenThisRequest = 0;
             var md5Hash = Array.Empty<byte>();
@@ -211,31 +219,31 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             var blobClient = GetAppendBlobClient(fileId);
             return await blobClient.ExistsAsync(cancellationToken);
         }
 
         public async Task<long?> GetUploadLengthAsync(string fileId, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             return long.Parse(await GetBlobMetadataAsync(fileId, UploadLengthKey, cancellationToken));
         }
 
         public async Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             return long.Parse(await GetBlobMetadataAsync(fileId, UploadOffsetKey, cancellationToken));
         }
 
         public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
         {
-            await EnsureContainerExistsAsync(_connectionString, _containerName, _isContainerPublic, cancellationToken);
+            await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             var blobClient = GetAppendBlobClient(fileId);
             await blobClient.DeleteAsync(cancellationToken: cancellationToken);
         }
 
-        private async static Task EnsureContainerExistsAsync(string connectionString, string containerName, bool isContainerPublic,
+        private async static Task EnsureContainerExistsAsync(AzureBlobTusStoreAuthenticationMode authenticationMode, string connectionString, string containerName, bool isContainerPublic,
             CancellationToken cancellationToken)
         {
             if (_containerExists)
@@ -249,7 +257,7 @@ namespace Xtensible.TusDotNet.Azure
             {
                 return;
             }
-            var containerClient = new BlobContainerClient(connectionString, containerName);
+            var containerClient = AzureBlobClientFactory.CreateBlobContainerClient(authenticationMode, connectionString, containerName);
             await containerClient.CreateIfNotExistsAsync(isContainerPublic ? PublicAccessType.BlobContainer : PublicAccessType.None,
                 cancellationToken: cancellationToken);
             _containerExists = true;
@@ -276,7 +284,7 @@ namespace Xtensible.TusDotNet.Azure
 
         private AppendBlobClient GetAppendBlobClient(string fileId)
         {
-            return new AppendBlobClient(_connectionString, _containerName, Path.Combine(_blobPath, fileId));
+            return AzureBlobClientFactory.CreateAppendBlobClient(_authenticationMode, _connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
 
         private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)
