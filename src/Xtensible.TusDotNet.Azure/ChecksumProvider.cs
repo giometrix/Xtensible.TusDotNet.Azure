@@ -8,15 +8,16 @@ namespace Xtensible.TusDotNet.Azure
 {
     internal static class ChecksumProvider
     {
-        internal static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
-        private static readonly MD5 MD5CryptoServiceProvider = MD5.Create();
         internal static byte[] GetChecksum(string algorithm, MemoryStream contents)
         {
             byte[] checksum;
             switch (algorithm)
             {
                 case "md5":
-                    checksum = MD5CryptoServiceProvider.ComputeHash(contents);
+                    using (var md5 = MD5.Create())
+                    {
+                        checksum = md5.ComputeHash(contents);
+                    }
                     break;
                 default:
                     throw new NotSupportedException();
