@@ -32,7 +32,6 @@ namespace Xtensible.TusDotNet.Azure
         private const string UploadOffsetKey = "UploadOffset";
         private const string MD5ChecksumKey = "MD5Checksum";
 
-        private static bool _containerExists;
         private static readonly SemaphoreSlim ContainerSemaphore = new SemaphoreSlim(1);
         private static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
         private readonly string _connectionString;
@@ -243,25 +242,28 @@ namespace Xtensible.TusDotNet.Azure
             await blobClient.DeleteAsync(cancellationToken: cancellationToken);
         }
 
-        private async static Task EnsureContainerExistsAsync(AzureBlobTusStoreAuthenticationMode authenticationMode, string connectionString, string containerName, bool isContainerPublic,
+        private static async Task EnsureContainerExistsAsync(AzureBlobTusStoreAuthenticationMode authenticationMode, string connectionString, string containerName, bool isContainerPublic,
             CancellationToken cancellationToken)
         {
-            if (_containerExists)
+            var containerClient = AzureBlobClientFactory.CreateBlobContainerClient(authenticationMode, connectionString, containerName);
+
+            if (await containerClient.ExistsAsync(cancellationToken))
             {
                 return;
             }
 
             await ContainerSemaphore.WaitAsync(60000, cancellationToken).ConfigureAwait(false);
 
-            if (_containerExists)
+            try
             {
-                return;
+                await containerClient.CreateIfNotExistsAsync(
+                    isContainerPublic ? PublicAccessType.BlobContainer : PublicAccessType.None,
+                    cancellationToken: cancellationToken);
             }
-            var containerClient = AzureBlobClientFactory.CreateBlobContainerClient(authenticationMode, connectionString, containerName);
-            await containerClient.CreateIfNotExistsAsync(isContainerPublic ? PublicAccessType.BlobContainer : PublicAccessType.None,
-                cancellationToken: cancellationToken);
-            _containerExists = true;
-            ContainerSemaphore.Release(1);
+            finally
+            {
+                ContainerSemaphore.Release(1);
+            }    
         }
 
         public Task<IEnumerable<string>> GetSupportedAlgorithmsAsync(CancellationToken cancellationToken)
