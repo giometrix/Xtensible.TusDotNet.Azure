@@ -2,13 +2,11 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using tusdotnet.Interfaces;
@@ -24,6 +22,7 @@ namespace Xtensible.TusDotNet.Azure
 #if ENABLE_CHECKSUM
         , ITusChecksumStore // we can only efficiently verify the checksum if we cap chunk sizes to <AppendBlobBlockSize> (4MB) or less
 #endif
+        ,IDisposable
 
     {
         private const int AppendBlobBlockSize = 4_194_304; //4MB
@@ -308,6 +307,11 @@ namespace Xtensible.TusDotNet.Azure
             var blobClient = GetAppendBlobClient(fileId);
             var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
             return properties.Value.Metadata.ToDictionary(k => k.Key, v => v.Value);
+        }
+
+        public void Dispose()
+        {
+            _containerSemaphore?.Dispose();
         }
     }
 }

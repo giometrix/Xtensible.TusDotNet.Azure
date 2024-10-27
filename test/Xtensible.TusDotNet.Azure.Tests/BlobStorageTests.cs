@@ -105,7 +105,7 @@ namespace Xtensible.TusDotNet.Azure.Tests
             var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
             await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
 
-            var azureBlobTusStore2 = new AzureBlobTusStore(_connectionString, ContainerName + "2");
+            using var azureBlobTusStore2 = new AzureBlobTusStore(_connectionString, ContainerName + "2");
             id = await azureBlobTusStore2.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
             await azureBlobTusStore2.DeleteFileAsync(id, CancellationToken.None);
 
