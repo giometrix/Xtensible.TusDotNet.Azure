@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Configuration;
 using tusdotnet.Models;
@@ -95,7 +96,22 @@ namespace Xtensible.TusDotNet.Azure.Tests
             await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
 
         }
-        
+
+        [Fact]
+        public async Task create_file_multiple_containers_should_not_fail()
+        {
+            var fileInfo = new FileInfo(SmallFileName);
+
+            var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+            await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
+
+            using var azureBlobTusStore2 = new AzureBlobTusStore(_connectionString, ContainerName + "2");
+            id = await azureBlobTusStore2.CreateFileAsync(fileInfo.Length, GetMetadata(("test", "1"), ("a", "b"), ("test-id", nameof(delete_file))), CancellationToken.None);
+            await azureBlobTusStore2.DeleteFileAsync(id, CancellationToken.None);
+
+            var client = new BlobContainerClient(_connectionString, ContainerName + 2);
+            await client.DeleteAsync();
+        }
 
         [Fact]
         public async Task create_file_with_path()
