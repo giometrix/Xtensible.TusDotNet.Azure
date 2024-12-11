@@ -174,6 +174,48 @@ namespace Xtensible.TusDotNet.Azure.Tests
         }
 
         [Fact]
+        public async Task append_file_with_cancellation_and_retry()
+        {
+            string filename = LargeFileName;
+
+            var fileInfo = new FileInfo(filename);
+            var id = await _azureBlobTusStore.CreateFileAsync(fileInfo.Length, GetMetadata(("filename", filename), ("test-id", nameof(append_file))), CancellationToken.None);
+
+            // Append the first block of bytes and then some, trigger cancellation token afterwards
+            CancellationTokenSource cancellationTokenSource = new();
+            using (var fileStream = new CancellationTriggeringReadingFileStream(filename, cancellationTokenSource, cancelAfterReadingBytes: 4_250_000))
+            {
+                var cancellationToken = cancellationTokenSource.Token;
+                try
+                {
+                    await _azureBlobTusStore.AppendDataAsync(id, fileStream, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // this should happen here
+                }
+            }
+
+            // Determine upload offset and resume upload
+            var uploadOffset = await _azureBlobTusStore.GetUploadOffsetAsync(id, CancellationToken.None);
+            using (var stream = File.OpenRead(filename))
+            {
+                stream.Position = uploadOffset;
+                await _azureBlobTusStore.AppendDataAsync(id, stream, CancellationToken.None);
+            }
+
+            var blobClient = GetAppendBlobClient(id);
+            var exists = await blobClient.ExistsAsync(CancellationToken.None);
+            Assert.True(exists.Value);
+
+            var blobStream = await blobClient.OpenReadAsync();
+
+            Assert.Equal(expected: fileInfo.Length, actual: blobStream.Length);
+
+            await _azureBlobTusStore.DeleteFileAsync(id, CancellationToken.None);
+        }
+
+        [Fact]
         public async Task expire_file()
         {
             if (_connectionString.Contains("UseDev") || _connectionString.Contains("devstoreaccount"))
