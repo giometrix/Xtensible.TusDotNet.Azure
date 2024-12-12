@@ -294,19 +294,23 @@ namespace Xtensible.TusDotNet.Azure
             return AzureBlobClientFactory.CreateAppendBlobClient(_authenticationMode, _connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
 
-        private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)
+        private async Task<BlobProperties> GetBlobPropertiesAsync(string fileId, CancellationToken cancellationToken)
         {
             var blobClient = GetAppendBlobClient(fileId);
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            properties.Value.Metadata.TryGetValue(key, out var value);
+            return (await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken)).Value;
+        }
+
+        private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)
+        {
+            var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+            properties.Metadata.TryGetValue(key, out var value);
             return value;
         }
 
         private async Task<Dictionary<string, string>> GetBlobMetadataAsync(string fileId, CancellationToken cancellationToken)
         {
-            var blobClient = GetAppendBlobClient(fileId);
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            return properties.Value.Metadata.ToDictionary(k => k.Key, v => v.Value);
+            var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+            return properties.Metadata.ToDictionary(k => k.Key, v => v.Value);
         }
 
         public void Dispose()
