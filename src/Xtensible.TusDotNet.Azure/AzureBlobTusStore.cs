@@ -285,8 +285,8 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
         {
-            var metadata = await GetBlobMetadataAsync(fileId, cancellationToken);
-            if (metadata.TryGetValue(MD5ChecksumKey, out var md5))
+            var md5 = await GetBlobMetadataAsync(fileId, MD5ChecksumKey, cancellationToken);
+            if (md5 != null)
             {
                 if (md5 == Convert.ToBase64String(checksum))
                 {
@@ -312,12 +312,6 @@ namespace Xtensible.TusDotNet.Azure
             var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
             properties.Metadata.TryGetValue(key, out var value);
             return value;
-        }
-
-        private async Task<Dictionary<string, string>> GetBlobMetadataAsync(string fileId, CancellationToken cancellationToken)
-        {
-            var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
-            return properties.Metadata.ToDictionary(k => k.Key, v => v.Value);
         }
 
         public void Dispose()
