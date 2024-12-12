@@ -28,8 +28,13 @@ namespace Xtensible.TusDotNet.Azure
         private const int AppendBlobBlockSize = 4_194_304; //4MB
         private const string UploadLengthKey = "UploadLength";
         private const string RawMetadataKey = "RawMetadata";
-        private const string UploadOffsetKey = "UploadOffset";
         private const string MD5ChecksumKey = "MD5Checksum";
+
+        // Keep this metadata property for now and set it to a const info string so that users are not confused by outdated values?
+        // Alternative: keep the const key name and remove it when reading metadata properties.
+        [Obsolete]
+        private const string UploadOffsetKey = "UploadOffset";
+        private const string UploadOffsetObsoleteValue = "not used anymore, see Content-Length property";
 
         private static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
         private readonly string _connectionString;
@@ -77,7 +82,7 @@ namespace Xtensible.TusDotNet.Azure
             {
                 [UploadLengthKey] = uploadLength.ToString(),
                 [RawMetadataKey] = metadata ?? string.Empty,
-                [UploadOffsetKey] = "0"
+                [UploadOffsetKey] = UploadOffsetObsoleteValue
             };
             _updateAzureMeta(metadataDictionary);
 
@@ -138,9 +143,10 @@ namespace Xtensible.TusDotNet.Azure
             {
                 var appendBlobClient = GetAppendBlobClient(fileId);
 
-                var properties = await GetBlobMetadataAsync(fileId, cancellationToken);
-                var fileLength = long.Parse(properties[UploadLengthKey]);
-                var offset = long.Parse(properties[UploadOffsetKey]);
+                var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+                var metadata = properties.Metadata.ToDictionary(k => k.Key, v => v.Value);
+                var fileLength = long.Parse(metadata[UploadLengthKey]);
+                var offset = properties.ContentLength;
                 var total = offset;
                 if (fileLength == offset)
                 {
@@ -204,9 +210,9 @@ namespace Xtensible.TusDotNet.Azure
                     }
                 }
 
-                properties[UploadOffsetKey] = (long.Parse(properties[UploadOffsetKey]) + bytesWrittenThisRequest).ToString();
-                properties[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
-                await appendBlobClient.SetMetadataAsync(properties, cancellationToken: cancellationToken);
+                metadata[UploadOffsetKey] = UploadOffsetObsoleteValue;
+                metadata[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
+                await appendBlobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             }
             finally
             {
@@ -232,7 +238,8 @@ namespace Xtensible.TusDotNet.Azure
         public async Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
         {
             await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
-            return long.Parse(await GetBlobMetadataAsync(fileId, UploadOffsetKey, cancellationToken));
+            var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+            return properties.ContentLength;
         }
 
         public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
