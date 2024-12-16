@@ -31,3 +31,25 @@ Unfortunately, it does not yet support tags (see [issue](https://github.com/Azur
 To work around this, I have split out the expiration stuff into a separate interface `ITusExpirationDetailsStore` and implemented `NullExpirationDetailsStore`.
 
 This allows you to use an external database (for just dev, or both prod and dev), or you can use `NullExpirationDetailsStore` in dev to forego using the expiration feature when using Azurite.
+
+### Version notes
+
+#### Why is the `UploadOffset` property on my upload blob missing or not updating anymore?
+
+In version 3.0.0 the `UploadOffset` property was deprecated in favor of the actual `Content-Length` HTTP property of the blob.
+
+This was done to fix possible upload blob data corruption when resuming uploads after a broken/cancelled connection and has the following (unproblematic) side effects:
+
+* Existing upload blobs created with version < 3.0.0 contain an `UploadOffset` property which is not updated anymore after updating to version ≥ 3.0.0.
+* New upload blobs created with version ≥ 3.0.0 do not contain an `UploadOffset` property at all.
+
+#### Can I prevent blob data corruption with versions < 3.x?
+
+Yes, by choosing a TUS chunk size ≤ 4 MiB (4 194 304 bytes). Please note that such small chunk sizes are not recommended because they reduce upload performance.
+
+#### Can I downgrade from version 3.x to 2.x?
+
+**Please don't, there is no reason why you should need or want to.**
+Uploads will either fail or become corrupt if you do it anyway.
+
+(It is possible, at your own risk, by making sure you set the `UploadOffset` metadata property on each upload blob to the exact same value as the `Content-Length` property of the blob, after stopping existing uploads and before deploying version 2.x.)
