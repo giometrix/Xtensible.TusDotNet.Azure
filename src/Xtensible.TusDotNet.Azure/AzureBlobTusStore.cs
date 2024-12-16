@@ -30,12 +30,6 @@ namespace Xtensible.TusDotNet.Azure
         private const string RawMetadataKey = "RawMetadata";
         private const string MD5ChecksumKey = "MD5Checksum";
 
-        // Keep this metadata property for now and set it to a const info string so that users are not confused by outdated values?
-        // Alternative: keep the const key name and remove it when reading metadata properties.
-        [Obsolete]
-        private const string UploadOffsetKey = "UploadOffset";
-        private const string UploadOffsetObsoleteValue = "not used anymore, see Content-Length property";
-
         private static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
         private readonly string _connectionString;
         private readonly string _containerName;
@@ -81,8 +75,7 @@ namespace Xtensible.TusDotNet.Azure
             var metadataDictionary = new Dictionary<string, string>
             {
                 [UploadLengthKey] = uploadLength.ToString(),
-                [RawMetadataKey] = metadata ?? string.Empty,
-                [UploadOffsetKey] = UploadOffsetObsoleteValue
+                [RawMetadataKey] = metadata ?? string.Empty
             };
             _updateAzureMeta(metadataDictionary);
 
@@ -210,7 +203,6 @@ namespace Xtensible.TusDotNet.Azure
                     }
                 }
 
-                metadata[UploadOffsetKey] = UploadOffsetObsoleteValue;
                 metadata[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
                 await appendBlobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             }
