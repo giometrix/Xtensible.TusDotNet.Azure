@@ -28,7 +28,6 @@ namespace Xtensible.TusDotNet.Azure
         private const int AppendBlobBlockSize = 4_194_304; //4MB
         private const string UploadLengthKey = "UploadLength";
         private const string RawMetadataKey = "RawMetadata";
-        private const string UploadOffsetKey = "UploadOffset";
         private const string MD5ChecksumKey = "MD5Checksum";
 
         private static readonly IEnumerable<string> SupportedChecksumAlgorithms = new ReadOnlyCollection<string>(new[] { "md5" });
@@ -76,8 +75,7 @@ namespace Xtensible.TusDotNet.Azure
             var metadataDictionary = new Dictionary<string, string>
             {
                 [UploadLengthKey] = uploadLength.ToString(),
-                [RawMetadataKey] = metadata ?? string.Empty,
-                [UploadOffsetKey] = "0"
+                [RawMetadataKey] = metadata ?? string.Empty
             };
             _updateAzureMeta(metadataDictionary);
 
@@ -138,9 +136,10 @@ namespace Xtensible.TusDotNet.Azure
             {
                 var appendBlobClient = GetAppendBlobClient(fileId);
 
-                var properties = await GetBlobMetadataAsync(fileId, cancellationToken);
-                var fileLength = long.Parse(properties[UploadLengthKey]);
-                var offset = long.Parse(properties[UploadOffsetKey]);
+                var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+                var metadata = properties.Metadata.ToDictionary(k => k.Key, v => v.Value);
+                var fileLength = long.Parse(metadata[UploadLengthKey]);
+                var offset = properties.ContentLength;
                 var total = offset;
                 if (fileLength == offset)
                 {
@@ -204,9 +203,8 @@ namespace Xtensible.TusDotNet.Azure
                     }
                 }
 
-                properties[UploadOffsetKey] = (long.Parse(properties[UploadOffsetKey]) + bytesWrittenThisRequest).ToString();
-                properties[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
-                await appendBlobClient.SetMetadataAsync(properties, cancellationToken: cancellationToken);
+                metadata[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
+                await appendBlobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             }
             finally
             {
@@ -232,7 +230,8 @@ namespace Xtensible.TusDotNet.Azure
         public async Task<long> GetUploadOffsetAsync(string fileId, CancellationToken cancellationToken)
         {
             await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
-            return long.Parse(await GetBlobMetadataAsync(fileId, UploadOffsetKey, cancellationToken));
+            var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+            return properties.ContentLength;
         }
 
         public async Task DeleteFileAsync(string fileId, CancellationToken cancellationToken)
@@ -278,8 +277,8 @@ namespace Xtensible.TusDotNet.Azure
 
         public async Task<bool> VerifyChecksumAsync(string fileId, string algorithm, byte[] checksum, CancellationToken cancellationToken)
         {
-            var metadata = await GetBlobMetadataAsync(fileId, cancellationToken);
-            if (metadata.TryGetValue(MD5ChecksumKey, out var md5))
+            var md5 = await GetBlobMetadataAsync(fileId, MD5ChecksumKey, cancellationToken);
+            if (md5 != null)
             {
                 if (md5 == Convert.ToBase64String(checksum))
                 {
@@ -294,19 +293,17 @@ namespace Xtensible.TusDotNet.Azure
             return AzureBlobClientFactory.CreateAppendBlobClient(_authenticationMode, _connectionString, _containerName, Path.Combine(_blobPath, fileId));
         }
 
-        private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)
+        private async Task<BlobProperties> GetBlobPropertiesAsync(string fileId, CancellationToken cancellationToken)
         {
             var blobClient = GetAppendBlobClient(fileId);
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            properties.Value.Metadata.TryGetValue(key, out var value);
-            return value;
+            return (await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken)).Value;
         }
 
-        private async Task<Dictionary<string, string>> GetBlobMetadataAsync(string fileId, CancellationToken cancellationToken)
+        private async Task<string> GetBlobMetadataAsync(string fileId, string key, CancellationToken cancellationToken)
         {
-            var blobClient = GetAppendBlobClient(fileId);
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            return properties.Value.Metadata.ToDictionary(k => k.Key, v => v.Value);
+            var properties = await GetBlobPropertiesAsync(fileId, cancellationToken);
+            properties.Metadata.TryGetValue(key, out var value);
+            return value;
         }
 
         public void Dispose()
