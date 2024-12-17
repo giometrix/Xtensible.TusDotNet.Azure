@@ -36,13 +36,13 @@
     <RepositoryUrl>https://github.com/giometrix/Xtensible.TusDotNet.Azure</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>tus;tusdotnet;azure;blob;azure-blob-storage;upload</PackageTags>
-    <PackageReleaseNotes>Allow for multiple containers</PackageReleaseNotes>
+    <PackageReleaseNotes>Fixes potential data corruption issue when resuming a download.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageIcon>xtensible-x.png</PackageIcon>
     <AssemblyVersion>1.4.0.0</AssemblyVersion>
     <FileVersion>1.4.0.0</FileVersion>
-    <Version>2.2</Version>
+    <Version>3.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
