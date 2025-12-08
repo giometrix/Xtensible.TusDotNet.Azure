@@ -18,9 +18,7 @@ The tus protocol offers a few [extensions](https://tus.io/protocols/resumable-up
 * Expiration - Server will consider uploads past a certain time expired and ready for deletion.
 
 ### Why aren't the following supported?
-* Checksum - The code for checksum (using md5) is actually written and can be enabled by #defining ENABLE_CHECKSUM.  It is disabled because it only works for upload chunks <= 4MB, which is the buffer size
-used to send data to Azure.  Anything beyond 4MB would be inefficient, because we'd have to download the bits from Azure to verify the checksum.  This implementation did not want to force upload limitations on consuming code,
-so this extension was disabled.  If you care about this feature and are ok with limiting chunk size to 4MB you can compile with it turned on.
+* Checksum - Checksum support (MD5) is available via the `AzureBlobChecksumTusStore` class. It implements `ITusChecksumStore` and performs checksum validation for appended blocks. A 4 MiB (4,194,304 bytes) chunk limit applies — checksum verification only works when the TUS chunk size is ≤ 4 MiB because the library validates checksums per 4 MiB block. Larger chunk sizes would require downloading blob data for verification, which is inefficient. If you need checksum support, instantiate `AzureBlobChecksumTusStore` instead of `AzureBlobTusStore` and ensure your client uses a chunk size ≤ 4 MiB.
 
 * Pipelines - tusdotnet supports pipelines for .net core 3.1+, which is more efficient than the streams implementation.  I haven't gotten to this yet, but will happily accept pull requests. 
 

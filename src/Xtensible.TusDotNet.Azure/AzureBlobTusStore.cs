@@ -14,14 +14,33 @@ using tusdotnet.Models;
 
 namespace Xtensible.TusDotNet.Azure
 {
+    /// <summary>
+    /// AzureBlobChecksumTusStore is an Azure Blob Storage backed tus store that extends
+    /// <see cref="AzureBlobTusStore"/> with support for checksum validation (MD5) of appended blocks.
+    /// It implements <see cref="tusdotnet.Interfaces.ITusChecksumStore"/> and performs checksum
+    /// verification during append operations using per-block MD5 checksums.
+    /// </summary>
+    /// <remarks>
+    /// Important: checksum verification is performed per 4 MiB block (4,194,304 bytes). This means
+    /// the TUS client must use a chunk size less than or equal to 4 MiB for checksum validation to work
+    /// reliably. If the client uses larger chunks, checksum validation will not be performed correctly
+    /// without downloading and verifying blob content, which this implementation avoids for performance.
+    /// <br/><br/>
+    /// Limitation: only the MD5 checksum algorithm is supported for verification. This is due
+    /// to Azure Blob Storage's native support for MD5 checksums on block appends.
+    /// </remarks>
+    /// <param name="connectionString">Connection string or URI for the Azure Blob Storage account. If AzureBlobTusStoreOptions.AzureBlobTusStoreAuthenticationMode is set to SystemAssignedManagedIdentity, it must be set to the blob endpoint URI.</param>
+    /// <param name="containerName">Name of the blob container for uploading to.</param>
+    /// <param name="options">Optional store configuration.</param>
+    public class AzureBlobChecksumTusStore(string connectionString, string containerName, AzureBlobTusStoreOptions options = default)
+        : AzureBlobTusStore(connectionString, containerName, options), ITusChecksumStore;
+    
+
     public class AzureBlobTusStore : ITusStore,
         ITusCreationStore
         , ITusReadableStore
         , ITusTerminationStore
         , ITusExpirationStore
-#if ENABLE_CHECKSUM
-        , ITusChecksumStore // we can only efficiently verify the checksum if we cap chunk sizes to <AppendBlobBlockSize> (4MB) or less
-#endif
         ,IDisposable
 
     {
