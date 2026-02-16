@@ -16,11 +16,10 @@ An Azure Blob Storage extension for [tusdotnet](https://github.com/tusdotnet/tus
 The tus protocol offers a few [extensions](https://tus.io/protocols/resumable-upload.html#protocol-extensions).  The following extensions are implemented:
 * Termination - Allows for deletion of completed and incomplete uploads.
 * Expiration - Server will consider uploads past a certain time expired and ready for deletion.
+* Checksum (MD5) - Available via the `AzureBlobChecksumTusStore` class. Use this instead of `AzureBlobTusStore` to enable checksum validation. A 4 MiB (4,194,304 bytes) chunk size limit applies — the library validates checksums per 4 MiB block, so your TUS client must use a chunk size ≤ 4 MiB. Larger chunks would require downloading blob data for verification, which is inefficient.
 
 ### Why aren't the following supported?
-* Checksum - Checksum support (MD5) is available via the `AzureBlobChecksumTusStore` class. It implements `ITusChecksumStore` and performs checksum validation for appended blocks. A 4 MiB (4,194,304 bytes) chunk limit applies — checksum verification only works when the TUS chunk size is ≤ 4 MiB because the library validates checksums per 4 MiB block. Larger chunk sizes would require downloading blob data for verification, which is inefficient. If you need checksum support, instantiate `AzureBlobChecksumTusStore` instead of `AzureBlobTusStore` and ensure your client uses a chunk size ≤ 4 MiB.
-
-* Pipelines - tusdotnet supports pipelines for .net core 3.1+, which is more efficient than the streams implementation.  I haven't gotten to this yet, but will happily accept pull requests. 
+* Pipelines - tusdotnet supports pipelines for .net core 3.1+, which is more efficient than the streams implementation.  I haven't gotten to this yet, but will happily accept pull requests.
 
 
 ### Azurite
