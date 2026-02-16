@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage;
@@ -14,28 +15,6 @@ using tusdotnet.Models;
 
 namespace Xtensible.TusDotNet.Azure
 {
-    /// <summary>
-    /// AzureBlobChecksumTusStore is an Azure Blob Storage backed tus store that extends
-    /// <see cref="AzureBlobTusStore"/> with support for checksum validation (MD5) of appended blocks.
-    /// It implements <see cref="tusdotnet.Interfaces.ITusChecksumStore"/> and performs checksum
-    /// verification during append operations using per-block MD5 checksums.
-    /// </summary>
-    /// <remarks>
-    /// Important: checksum verification is performed per 4 MiB block (4,194,304 bytes). This means
-    /// the TUS client must use a chunk size less than or equal to 4 MiB for checksum validation to work
-    /// reliably. If the client uses larger chunks, checksum validation will not be performed correctly
-    /// without downloading and verifying blob content, which this implementation avoids for performance.
-    /// <br/><br/>
-    /// Limitation: only the MD5 checksum algorithm is supported for verification. This is due
-    /// to Azure Blob Storage's native support for MD5 checksums on block appends.
-    /// </remarks>
-    /// <param name="connectionString">Connection string or URI for the Azure Blob Storage account. If AzureBlobTusStoreOptions.AzureBlobTusStoreAuthenticationMode is set to SystemAssignedManagedIdentity, it must be set to the blob endpoint URI.</param>
-    /// <param name="containerName">Name of the blob container for uploading to.</param>
-    /// <param name="options">Optional store configuration.</param>
-    public class AzureBlobChecksumTusStore(string connectionString, string containerName, AzureBlobTusStoreOptions options = default)
-        : AzureBlobTusStore(connectionString, containerName, options), ITusChecksumStore;
-    
-
     public class AzureBlobTusStore : ITusStore,
         ITusCreationStore
         , ITusReadableStore
@@ -149,7 +128,6 @@ namespace Xtensible.TusDotNet.Azure
             await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             var writeBuffer = _writeBuffer.Rent(AppendBlobBlockSize);
             long bytesWrittenThisRequest = 0;
-            var md5Hash = Array.Empty<byte>();
 
             try
             {
@@ -165,6 +143,7 @@ namespace Xtensible.TusDotNet.Azure
                     return 0;
                 }
 
+                using var md5 = MD5.Create();
                 var bytesReadFromClient = 0;
                 var bytesWritten = 0;
                 while (true)
@@ -190,6 +169,7 @@ namespace Xtensible.TusDotNet.Azure
                     bytesWritten += bytesReadFromClient;
                     if (bytesWritten >= AppendBlobBlockSize)
                     {
+                        md5.TransformBlock(writeBuffer, 0, bytesWritten, null, 0);
                         using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                         {
                             var options = new AppendBlobAppendBlockOptions
@@ -208,6 +188,7 @@ namespace Xtensible.TusDotNet.Azure
 
                 if (bytesWritten > 0)
                 {
+                    md5.TransformBlock(writeBuffer, 0, bytesWritten, null, 0);
                     using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                     {
                         var options = new AppendBlobAppendBlockOptions
@@ -222,7 +203,8 @@ namespace Xtensible.TusDotNet.Azure
                     }
                 }
 
-                metadata[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
+                md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                metadata[MD5ChecksumKey] = Convert.ToBase64String(md5.Hash);
                 await appendBlobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             }
             finally
