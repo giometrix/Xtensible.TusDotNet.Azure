@@ -363,3 +363,9 @@ MigrationBackup/
 FodyWeavers.xsd
 /test/Xtensible.TusDotNet.Azure.Tests/appSettings.local.json
 /test/Xtensible.TusDotNet.Azure.Benchmarks/appSettings.local.json
+
+# macOS
+.DS_Store
+
+# JetBrains Rider
+.idea/

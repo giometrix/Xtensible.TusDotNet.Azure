@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage;
@@ -19,9 +20,6 @@ namespace Xtensible.TusDotNet.Azure
         , ITusReadableStore
         , ITusTerminationStore
         , ITusExpirationStore
-#if ENABLE_CHECKSUM
-        , ITusChecksumStore // we can only efficiently verify the checksum if we cap chunk sizes to <AppendBlobBlockSize> (4MB) or less
-#endif
         ,IDisposable
 
     {
@@ -130,7 +128,6 @@ namespace Xtensible.TusDotNet.Azure
             await EnsureContainerExistsAsync(_authenticationMode, _connectionString, _containerName, _isContainerPublic, cancellationToken);
             var writeBuffer = _writeBuffer.Rent(AppendBlobBlockSize);
             long bytesWrittenThisRequest = 0;
-            var md5Hash = Array.Empty<byte>();
 
             try
             {
@@ -146,6 +143,7 @@ namespace Xtensible.TusDotNet.Azure
                     return 0;
                 }
 
+                using var md5 = MD5.Create();
                 var bytesReadFromClient = 0;
                 var bytesWritten = 0;
                 while (true)
@@ -171,6 +169,7 @@ namespace Xtensible.TusDotNet.Azure
                     bytesWritten += bytesReadFromClient;
                     if (bytesWritten >= AppendBlobBlockSize)
                     {
+                        md5.TransformBlock(writeBuffer, 0, bytesWritten, null, 0);
                         using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                         {
                             var options = new AppendBlobAppendBlockOptions
@@ -189,6 +188,7 @@ namespace Xtensible.TusDotNet.Azure
 
                 if (bytesWritten > 0)
                 {
+                    md5.TransformBlock(writeBuffer, 0, bytesWritten, null, 0);
                     using (var ms = new MemoryStream(writeBuffer, 0, bytesWritten))
                     {
                         var options = new AppendBlobAppendBlockOptions
@@ -203,7 +203,8 @@ namespace Xtensible.TusDotNet.Azure
                     }
                 }
 
-                metadata[MD5ChecksumKey] = Convert.ToBase64String(md5Hash);
+                md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                metadata[MD5ChecksumKey] = Convert.ToBase64String(md5.Hash);
                 await appendBlobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             }
             finally
