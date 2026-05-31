@@ -15,5 +15,6 @@ namespace Xtensible.TusDotNet.Azure
         public string BlobPath { get; set; } = "";
         public Action<Dictionary<string, string>> UpdateAzureMeta { get; set; } = default;
         public AzureBlobTusStoreAuthenticationMode AuthenticationMode { get; set; } = AzureBlobTusStoreAuthenticationMode.ConnectionString;
+        public bool CreateContainer { get; set; } = true;
     }
 }

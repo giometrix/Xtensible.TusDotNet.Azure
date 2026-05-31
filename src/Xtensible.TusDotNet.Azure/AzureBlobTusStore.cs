@@ -62,6 +62,7 @@ namespace Xtensible.TusDotNet.Azure
             _isContainerPublic = options.IsContainerPublic;
             _fileIdGeneratorAsync = options.FileIdGeneratorAsync ?? (metadata => Task.FromResult(Guid.NewGuid().ToString("N")));
             _updateAzureMeta = options.UpdateAzureMeta ?? ((metadata) => { });
+            _containerExists = !options.CreateContainer;
         }
 
         public async Task<string> CreateFileAsync(long uploadLength, string metadata, CancellationToken cancellationToken)
